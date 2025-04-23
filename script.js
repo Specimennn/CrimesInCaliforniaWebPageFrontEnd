@@ -1,32 +1,35 @@
+const API_URL = "https://web-production-c1c9.up.railway.app/all-crimes";
+
 async function loadCrimeData() {
-    const response = await fetch("web-production-c1c9.up.railway.app");
+  const tbody = document.getElementById("crime-body");
+  const table = document.getElementById("crime-table");
+  const loading = document.getElementById("loading");
+
+  try {
+    const response = await fetch(API_URL);
     const data = await response.json();
-  
-    const labels = data.map(entry => entry.crime);
-    const values = data.map(entry => entry.count);
-  
-    new Chart(document.getElementById("crimeChart"), {
-      type: "bar",
-      data: {
-        labels: labels,
-        datasets: [{
-          label: "Cantidad de crímenes",
-          data: values,
-          backgroundColor: "rgba(255, 99, 132, 0.5)",
-          borderColor: "rgba(255, 99, 132, 1)",
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: {
-            beginAtZero: true
-          }
-        }
-      }
+
+    data.forEach(row => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${row.date_rptd || ""}</td>
+        <td>${row.date_occ || ""}</td>
+        <td>${row.vict_age || ""}</td>
+        <td>${row.vict_sex || ""}</td>
+        <td>${row.crm_cd_desc || ""}</td>
+        <td>${row.area || ""}</td>
+        <td>${row.lat || ""}</td>
+        <td>${row.lon || ""}</td>
+      `;
+      tbody.appendChild(tr);
     });
+
+    loading.style.display = "none";
+    table.style.display = "table";
+  } catch (error) {
+    loading.textContent = "Error al cargar los datos";
+    console.error("Error:", error);
   }
-  
-  loadCrimeData();
-  
+}
+
+document.addEventListener("DOMContentLoaded", loadCrimeData);

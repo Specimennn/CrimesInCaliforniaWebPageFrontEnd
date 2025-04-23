@@ -1,16 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>LA Crime Data</title>
+  <meta charset="UTF-8">
+  <title>Dashboard Crímenes en LA</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <h1>Crímenes en Los Ángeles</h1>
-  <canvas id="crimeChart" width="800" height="400"></canvas>
-
-  <script src="main.js"></script>
+  <header>
+    <h1>📊 Dashboard de Crímenes en Los Angeles</h1>
+  </header>
+  <main>
+    <div id="loading">Cargando datos...</div>
+    <div id="dashboard">
+      <table id="crime-table">
+        <thead>
+          <tr>
+            <th>Fecha Reporte</th>
+            <th>Fecha Ocurrencia</th>
+            <th>Edad Víctima</th>
+            <th>Sexo</th>
+            <th>Delito</th>
+            <th>Área</th>
+            <th>Lat</th>
+            <th>Lon</th>
+          </tr>
+        </thead>
+        <tbody id="crime-body"></tbody>
+      </table>
+    </div>
+  </main>
+  <script src="script.js"></script>
 </body>
 </html>

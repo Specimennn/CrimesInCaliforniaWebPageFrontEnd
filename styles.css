@@ -1,9 +1,55 @@
 body {
-    font-family: Arial, sans-serif;
-    text-align: center;
-    background-color: #f4f4f4;
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #f2f4f8;
+    color: #333;
   }
-  canvas {
-    margin: 20px auto;
+  
+  header {
+    background-color: #283593;
+    color: white;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  }
+  
+  h1 {
+    margin: 0;
+  }
+  
+  main {
+    padding: 2rem;
+  }
+  
+  #loading {
+    font-size: 1.2rem;
+    text-align: center;
+  }
+  
+  #crime-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    display: none;
+  }
+  
+  #crime-table th,
+  #crime-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
+  }
+  
+  #crime-table th {
+    background-color: #3f51b5;
+    color: white;
+  }
+  
+  #crime-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  
+  #dashboard {
+    overflow-x: auto;
   }
   
