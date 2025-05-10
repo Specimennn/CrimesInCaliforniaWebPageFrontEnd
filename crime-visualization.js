@@ -1,10 +1,13 @@
 // Crime Data Visualization Script
-// This script enhances your existing HTML page with charts
+// This script enhances your existing HTML page with charts and map
 
 const API_URL = "https://web-production-c1c9.up.railway.app/all-crimes";
 
-// Add this to your existing HTML file in the head section:
+// Add these to your existing HTML file in the head section:
 // <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+// <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+// <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+// <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
 
 // Main function to load and visualize crime data
 async function loadCrimeData() {
@@ -12,7 +15,7 @@ async function loadCrimeData() {
   const table = document.getElementById("crime-table");
   const loading = document.getElementById("loading");
   
-  // Create container for charts
+  // Create container for charts and map
   const chartContainer = document.createElement("div");
   chartContainer.id = "chart-dashboard";
   chartContainer.className = "chart-dashboard";
@@ -37,8 +40,14 @@ async function loadCrimeData() {
   // Insert toggle button before chart container
   chartContainer.parentNode.insertBefore(toggleButton, chartContainer);
   
-  // Create chart canvases
+  // Create chart canvases and map container
   chartContainer.innerHTML = `
+    <div class="chart-row">
+      <div class="chart-container">
+        <h3>Crime Map - LA City</h3>
+        <div id="crime-map" style="height: 500px;"></div>
+      </div>
+    </div>
     <div class="chart-row">
       <div class="chart-container">
         <h3>Top Crime Types</h3>
@@ -92,6 +101,9 @@ async function loadCrimeData() {
     // Analyze data for charts
     const analysis = analyzeData(data);
     
+    // Create the map
+    createCrimeMap(data);
+    
     // Create all charts
     createCharts(analysis);
     
@@ -104,6 +116,169 @@ async function loadCrimeData() {
     loading.textContent = "Error loading data";
     console.error("Error:", error);
   }
+}
+
+// Create crime map using Leaflet
+function createCrimeMap(data) {
+  // Center of Los Angeles
+  const LA_CENTER = [34.0522, -118.2437];
+  
+  // Initialize map
+  const map = L.map('crime-map').setView(LA_CENTER, 10);
+  
+  // Add OpenStreetMap tile layer
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+  
+  // Create markers layer group
+  const markers = L.layerGroup().addTo(map);
+  
+  // Create heatmap data array
+  const heatData = [];
+  
+  // Process data for map visualization
+  const validPoints = data.filter(item => {
+    // Ensure we have valid lat/lon
+    const lat = parseFloat(item.lat);
+    const lon = parseFloat(item.lon);
+    return !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0;
+  });
+  
+  // Group data by crime type for the legend
+  const crimeTypes = {};
+  validPoints.forEach(item => {
+    if (item.crm_cd_desc) {
+      crimeTypes[item.crm_cd_desc] = (crimeTypes[item.crm_cd_desc] || 0) + 1;
+    }
+  });
+  
+  // Create a color map for crime types (use only top types for clarity)
+  const topCrimes = Object.keys(crimeTypes)
+    .sort((a, b) => crimeTypes[b] - crimeTypes[a])
+    .slice(0, 8);
+    
+  const crimeColors = {
+    "VEHICLE - STOLEN": "#FF5733",
+    "BURGLARY FROM VEHICLE": "#C70039",
+    "BURGLARY": "#900C3F",
+    "THEFT PLAIN - PETTY": "#581845",
+    "ASSAULT WITH DEADLY WEAPON": "#FF0000",
+    "BATTERY - SIMPLE ASSAULT": "#FFC300",
+    "ROBBERY": "#DAF7A6",
+    "THEFT OF IDENTITY": "#FFC0CB"
+  };
+  
+  // Ensure we have a color for each of our top crimes
+  topCrimes.forEach((crime, index) => {
+    if (!crimeColors[crime]) {
+      const colorPalette = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d", "#ffc658", "#FF6B6B"];
+      crimeColors[crime] = colorPalette[index % colorPalette.length];
+    }
+  });
+  
+  // Add clustered markers for better performance with large datasets
+  const clusters = L.markerClusterGroup();
+  
+  // Add data points to map
+  validPoints.forEach(item => {
+    const lat = parseFloat(item.lat);
+    const lon = parseFloat(item.lon);
+    
+    if (lat && lon) {
+      // Add to heatmap data
+      heatData.push([lat, lon, 1]); // Third parameter is intensity
+      
+      // Create popup content
+      const popupContent = `
+        <strong>Crime:</strong> ${item.crm_cd_desc || 'Unknown'}<br>
+        <strong>Date:</strong> ${item.date_occ || 'Unknown'}<br>
+        <strong>Victim Age:</strong> ${item.vict_age || 'Unknown'}<br>
+        <strong>Victim Gender:</strong> ${item.vict_sex || 'Unknown'}<br>
+        <strong>Area:</strong> ${item.area || 'Unknown'}
+      `;
+      
+      // Determine marker color based on crime type
+      const defaultColor = "#3388ff"; // Default blue
+      const color = crimeColors[item.crm_cd_desc] || defaultColor;
+      
+      // Create customized marker
+      const markerOptions = {
+        radius: 6,
+        fillColor: color,
+        color: "#000",
+        weight: 1,
+        opacity: 1,
+        fillOpacity: 0.8
+      };
+      
+      // Add circle marker to cluster group
+      const marker = L.circleMarker([lat, lon], markerOptions).bindPopup(popupContent);
+      clusters.addLayer(marker);
+    }
+  });
+  
+  // Add clusters to map
+  map.addLayer(clusters);
+  
+  // Add heatmap layer (separate visualization option)
+  const heat = L.heatLayer(heatData, {
+    radius: 20,
+    blur: 15,
+    maxZoom: 17,
+    gradient: {0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1.0: 'red'}
+  });
+  
+  // Create layer controls
+  const baseMaps = {
+    "Street Map": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }),
+    "Satellite": L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+      attribution: '&copy; Google Maps'
+    })
+  };
+  
+  const overlayMaps = {
+    "Crime Points": clusters,
+    "Heat Map": heat
+  };
+  
+  // Add active layers to map
+  baseMaps["Street Map"].addTo(map);
+  
+  // Add layer control to map
+  L.control.layers(baseMaps, overlayMaps).addTo(map);
+  
+  // Add legend for crime types
+  const legend = L.control({position: 'bottomright'});
+  
+  legend.onAdd = function (map) {
+    const div = L.DomUtil.create('div', 'info legend');
+    div.style.backgroundColor = 'white';
+    div.style.padding = '10px';
+    div.style.borderRadius = '5px';
+    div.style.boxShadow = '0 1px 5px rgba(0,0,0,0.4)';
+    
+    div.innerHTML = '<h4 style="margin-top:0;margin-bottom:5px;">Crime Types</h4>';
+    
+    // Add legend items for top crime types
+    topCrimes.forEach(crime => {
+      div.innerHTML += 
+        `<div style="margin-bottom:3px;">
+           <i style="background:${crimeColors[crime]};width:10px;height:10px;display:inline-block;"></i> 
+           <span style="font-size:12px;margin-left:5px;">${crime}</span>
+         </div>`;
+    });
+    
+    return div;
+  };
+  
+  legend.addTo(map);
+  
+  return map;
 }
 
 // Analyze data for visualizations
@@ -315,7 +490,7 @@ function createCharts(analysis) {
   });
 }
 
-// Add CSS for charts
+// Add CSS for charts and map
 function addChartStyles() {
   const style = document.createElement('style');
   style.textContent = `
@@ -374,6 +549,12 @@ function addChartStyles() {
     
     .toggle-button:hover {
       background-color: #45a049;
+    }
+    
+    #crime-map {
+      width: 100%;
+      border-radius: 4px;
+      border: 1px solid #ddd;
     }
     
     @media (max-width: 768px) {
